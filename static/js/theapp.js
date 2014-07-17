@@ -1,1 +1,0 @@
-alert("it's an app");
