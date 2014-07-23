@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
-	_ "github.com/gorilla/websocket"
+	"github.com/gorilla/websocket"
 	"html/template"
 	"net/http"
 	"sync"
+	"time"
 )
 
 type doc struct {
-	_     sync.Mutex
-	dirty bool
-	Text  []byte
+	_    sync.Mutex
+	sent []bool
+	Text []byte
 }
 
 type docEditor struct {
@@ -32,12 +33,13 @@ func (ed *docEditor) getDocText(id string) []byte {
 }
 
 func (ed *docEditor) editHandle(rw http.ResponseWriter, req *http.Request) {
+
+	conn, err := upgrader.Upgrade(rw, req, nil)
 	docId := req.URL.Path[len("/edit/"):]
-	text := ed.getDocText(docId)
-	_ = text
-	fmt.Fprint(rw, text)
 
 }
+
+var upgrader = websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 1024}
 
 func (ed *docEditor) viewHandle(rw http.ResponseWriter, req *http.Request) {
 	docId := req.URL.Path[len("/view/"):]
@@ -46,4 +48,26 @@ func (ed *docEditor) viewHandle(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+
+	conn, err := websocket.upgrader.Upgrade(rw, req, nil)
+	if err != nil {
+		panic(err)
+	}
+	go func() {
+		_, _, err = conn.ReadMessage()
+		if err != null {
+			conn.Close()
+			return
+		}
+	}()
+	for {
+		time.Sleep(17 * time.Millisecond) // 1/60th of a second
+		err := conn.WriteMessage(websocket.BinaryMessage, requestedDoc.Text)
+		if err != nil {
+			conn.Close()
+			return
+		}
+
+	}
+
 }
